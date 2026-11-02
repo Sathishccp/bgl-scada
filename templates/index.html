@@ -1035,12 +1035,25 @@
 
                 var nextY = Math.max(curY + 125, tapY + 25);
                 var tBranchValves = childValves.filter(function(cv) { return cv.toUpperCase().indexOf('D01-PE05') !== -1 && cNode.toUpperCase().indexOf('PE04') !== -1; });
-                var sameColValves = childValves.filter(function(cv) { return tBranchValves.indexOf(cv) === -1; });
 
-                tBranchValves.forEach(function(tv) {
-                  colQueue.unshift({ startNode: tv, startY: curY + 60, lineNum: 0, fromT: { x: bx, y: curY, id: cNode } });
-                });
-                if (sameColValves.length > 0) seriesQueue.unshift.apply(seriesQueue, sameColValves);
+                if (childValves.length > 1) {
+                  // Sibling valves belong on separate columns; stacking them in series
+                  // falsely suggests gas must pass through one branch to reach another.
+                  childValves.forEach(function(cv) {
+                    var isTBranch = tBranchValves.indexOf(cv) !== -1;
+                    colQueue.push({
+                      startNode: cv,
+                      startY: isTBranch ? curY + 60 : nextY,
+                      lineNum: 0,
+                      fromT: { x: bx, y: curY, id: cNode, kind: isTBranch ? 't' : 'branch' }
+                    });
+                  });
+                } else if (tBranchValves.length === 1) {
+                  colQueue.push({ startNode: tBranchValves[0], startY: curY + 60, lineNum: 0, fromT: { x: bx, y: curY, id: cNode, kind: 't' } });
+                } else if (childValves.length === 1) {
+                  // A single child remains a series continuation on this pipe.
+                  seriesQueue.unshift(childValves[0]);
+                }
 
                 colSteps.push({ isValve: true, cNode: cNode, curY: curY, prevValveId: prevValveId, prevValveBottomY: prevValveBottomY, cCards: cCards });
                 prevValveId = cNode; prevValveBottomY = curY + 24; curY = nextY;
@@ -1144,7 +1157,8 @@
             var routeY = pt.y - 36;
             var tPath = 'M ' + (pt.x + 105) + ' ' + pt.y + ' L ' + (pt.x + 135) + ' ' + pt.y + ' L ' + (pt.x + 135) + ' ' + routeY + ' L ' + bx + ' ' + routeY + ' L ' + bx + ' ' + (colItem.startY - 24);
             svgElements += renderPipe(tPath, tLive, isReverse(pt.id, colItem.startNode, R));
-            svgElements += '<text x="' + Math.round((pt.x + 135 + bx)/2) + '" y="' + (routeY - 8) + '" text-anchor="middle" font-family="var(--font-tech)" font-size="11" font-weight="800" fill="#b45309">⚡ T-CONNECT</text>';
+            var branchLabel = pt.kind === 't' ? '⚡ T-CONNECT' : '⚡ BRANCH';
+            svgElements += '<text x="' + Math.round((pt.x + 135 + bx)/2) + '" y="' + (routeY - 8) + '" text-anchor="middle" font-family="var(--font-tech)" font-size="11" font-weight="800" fill="#b45309">' + branchLabel + '</text>';
           }
 
           dc.colSteps.forEach(function(st) {
