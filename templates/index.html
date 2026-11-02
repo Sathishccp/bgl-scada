@@ -1045,6 +1045,9 @@
                       startNode: cv,
                       startY: isTBranch ? curY + 60 : nextY,
                       lineNum: 0,
+                      columnGap: 600,
+                      branchIndex: childValves.indexOf(cv),
+                      branchCount: childValves.length,
                       fromT: { x: bx, y: curY, id: cNode, kind: isTBranch ? 't' : 'branch' }
                     });
                   });
@@ -1064,7 +1067,7 @@
               if (curY > maxTreeY) maxTreeY = curY;
             }
             drsCols.push({ bx: bx, colItem: colItem, colSteps: colSteps });
-            colX += 760;
+            colX += colItem.columnGap || 760;
           }
         }
 
@@ -1154,10 +1157,12 @@
           } else {
             var pt = colItem.fromT;
             var tLive = Boolean(S[pt.id] && S[colItem.startNode]);
-            var routeY = pt.y - 36;
+            // Give each sibling its own visible take-off height so two branch
+            // pipes do not sit exactly on top of one another in the drawing.
+            var routeY = pt.y - 36 - ((colItem.branchCount > 1 ? colItem.branchIndex : 0) * 30);
             var tPath = 'M ' + (pt.x + 105) + ' ' + pt.y + ' L ' + (pt.x + 135) + ' ' + pt.y + ' L ' + (pt.x + 135) + ' ' + routeY + ' L ' + bx + ' ' + routeY + ' L ' + bx + ' ' + (colItem.startY - 24);
             svgElements += renderPipe(tPath, tLive, isReverse(pt.id, colItem.startNode, R));
-            var branchLabel = pt.kind === 't' ? '⚡ T-CONNECT' : '⚡ BRANCH';
+            var branchLabel = pt.kind === 't' ? '⚡ T-CONNECT' : (colItem.branchCount > 1 ? '⚡ BRANCH ' + (colItem.branchIndex + 1) : '⚡ BRANCH');
             svgElements += '<text x="' + Math.round((pt.x + 135 + bx)/2) + '" y="' + (routeY - 8) + '" text-anchor="middle" font-family="var(--font-tech)" font-size="11" font-weight="800" fill="#b45309">' + branchLabel + '</text>';
           }
 
